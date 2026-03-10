@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+pydantic
+openai
+azure-search-documents
+pypdf
+numpy
+python-multipart
+langchain-text-splitters
+azure-storage-blob
+aiofiles
+aiohttp

@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Banking Law RAG Assistant</title>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<style>
+:root {
+  --bg-light: #f4f6fb;
+  --bg-dark: #0f172a;
+  --card-light: #ffffff;
+  --card-dark: #1e293b;
+  --primary: #2563eb;
+  --text-light: #111827;
+  --text-dark: #f1f5f9;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: var(--bg-light);
+  color: var(--text-light);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  transition: 0.3s ease;
+}
+
+.dark {
+  background: var(--bg-dark);
+  color: var(--text-dark);
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background: linear-gradient(90deg, #1e3a8a, #2563eb);
+  color: white;
+  font-weight: 600;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-container img {
+  width: 32px;
+  height: 32px;
+}
+
+#toggle {
+  background: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* Upload Section */
+.upload-section {
+  padding: 15px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: #eef2ff;
+}
+
+.dark .upload-section {
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+}
+
+#chat {
+  flex: 1;
+  overflow-y: auto;
+  padding: 25px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.message {
+  max-width: 70%;
+  padding: 14px 18px;
+  border-radius: 18px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.user {
+  align-self: flex-end;
+  background: var(--primary);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.bot {
+  align-self: flex-start;
+  background: var(--card-light);
+  border: 1px solid #e5e7eb;
+  border-bottom-left-radius: 4px;
+}
+
+.dark .bot {
+  background: var(--card-dark);
+  border: 1px solid #334155;
+}
+
+.system {
+  align-self: center;
+  background: #facc15;
+  color: #111;
+  font-size: 13px;
+}
+
+footer {
+  display: flex;
+  padding: 15px;
+  background: white;
+  border-top: 1px solid #e5e7eb;
+}
+
+.dark footer {
+  background: #1e293b;
+  border-top: 1px solid #334155;
+}
+
+input[type="text"] {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  outline: none;
+}
+
+.dark input[type="text"] {
+  background: #0f172a;
+  color: white;
+  border: 1px solid #334155;
+}
+
+button.send {
+  padding: 12px 20px;
+  border-radius: 10px;
+  border: none;
+  background: var(--primary);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button.send:hover {
+  background: #1e40af;
+}
+
+.typing {
+  font-style: italic;
+  opacity: 0.7;
+}
+.retrieval-block {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px;
+  margin: 10px 0;
+  max-width: 95%;
+  align-self: flex-start;
+  font-size: 13px;
+}
+
+.dark .retrieval-block {
+  background: #1e293b;
+  border: 1px solid #334155;
+}
+
+.retrieval-header {
+  font-weight: 600;
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.score {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.retrieval-source {
+  font-size: 12px;
+  color: #2563eb;
+  margin-bottom: 8px;
+}
+
+.retrieval-content {
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo-container">
+    <img src="https://cdn-icons-png.flaticon.com/512/2830/2830284.png" alt="Bank Logo">
+    <span>Banking RAG Assistant</span>
+  </div>
+  <button id="toggle">Dark Mode</button>
+</header>
+
+<div id="chat"></div>
+<footer>
+  <input type="text" id="msg" placeholder="Ask about banking laws..." />
+
+  <button class="send" onclick="send()" style="margin-left:10px;">
+    Send
+  </button>
+
+  <!-- Hidden file input -->
+  <input type="file" id="pdfUpload" accept=".pdf" style="display:none">
+
+  <!-- Upload button on right -->
+  <button class="send" onclick="document.getElementById('pdfUpload').click()" 
+          style="margin-left:10px;">
+    Upload files
+  </button>
+</footer>
+
+  <script>
+  let session_id = null;
+  const chatBox = document.getElementById("chat");
+  const inputBox = document.getElementById("msg");
+  const toggleBtn = document.getElementById("toggle");
+
+  document.getElementById("pdfUpload").addEventListener("change", uploadPDF);
+
+
+  // Dark Mode
+  toggleBtn.addEventListener("click", () => {
+    document.body.classList.toggle("dark");
+    toggleBtn.textContent =
+      document.body.classList.contains("dark") ? "Light Mode" : "Dark Mode";
+  });
+
+
+  // Add message
+  function addMessage(content, sender) {
+
+    const msgDiv = document.createElement("div");
+    msgDiv.classList.add("message", sender);
+
+    if (sender === "bot") {
+      msgDiv.innerHTML = marked.parse(content);
+    } else {
+      msgDiv.textContent = content;
+    }
+
+    chatBox.appendChild(msgDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+
+
+  // Chat send
+  async function send() {
+
+    const msg = inputBox.value.trim();
+    if (!msg) return;
+
+    addMessage(msg, "user");
+    inputBox.value = "";
+
+
+    const typingIndicator = document.createElement("div");
+    typingIndicator.classList.add("message", "bot", "typing");
+    typingIndicator.textContent = "Assistant is typing...";
+    chatBox.appendChild(typingIndicator);
+
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+
+    const res = await fetch("/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: msg, session_id })
+    });
+
+    const data = await res.json();
+    session_id = data.session_id;
+
+
+    chatBox.removeChild(typingIndicator);
+
+
+    // Remove old chunks
+    document.querySelectorAll(".retrieval-block").forEach(el => el.remove());
+
+
+    // Show answer
+    addMessage(data.answer, "bot");
+
+
+    // Show sources
+    if (data.sources && data.sources.length > 0) {
+
+      const sourceBox = document.createElement("div");
+      sourceBox.classList.add("message", "system");
+      sourceBox.innerHTML = "📚 Sources:";
+
+      data.sources.forEach((src, index) => {
+
+        const link = document.createElement("div");
+        link.textContent = src;
+        link.style.cursor = "pointer";
+        link.style.color = "#2563eb";
+        link.style.marginTop = "6px";
+
+        link.onclick = () => {
+
+          const existing = document.getElementById("chunk_" + index);
+
+          // Toggle behaviour
+          if (existing) {
+            existing.remove();
+            return;
+          }
+
+          const item = data.retrieval_debug.find(d =>
+  src.includes(d.file_name) && src.includes("Page " + d.page_number)
+);
+          if (!item)return;
+
+          const block = document.createElement("div");
+          block.classList.add("retrieval-block");
+          block.id = "chunk_" + index;
+
+          block.innerHTML = `
+            <div class="retrieval-header">
+               Rank ${index + 1}
+              <span class="score">Score: ${item.score}</span>
+            </div>
+
+            <div class="retrieval-source">
+               ${item.file_name} - Page ${item.page_number}
+            </div>
+
+            <div class="retrieval-content">
+              ${item.content}
+            </div>
+          `;
+
+          chatBox.appendChild(block);
+          chatBox.scrollTop = chatBox.scrollHeight;
+        };
+
+        sourceBox.appendChild(link);
+      });
+
+      chatBox.appendChild(sourceBox);
+    } 
+
+  }
+
+
+
+  // Upload PDF
+  async function uploadPDF() {
+
+    const fileInput = document.getElementById("pdfUpload");
+    const file = fileInput.files[0];
+
+    if (!file) {
+      addMessage("Please select a PDF file first.", "system");
+      return;
+    }
+
+    addMessage("Uploading " + file.name + "...", "system");
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch("/upload", {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await res.json();
+
+    addMessage(data.message, "system");
+
+    fileInput.value = "";
+  }
+
+  // Enter key send
+  inputBox.addEventListener("keydown", function(event) {
+
+    if (event.key === "Enter") {
+      event.preventDefault();
+      send();
+    }
+
+  });
+  </script>
+
+</body>
+</html>
