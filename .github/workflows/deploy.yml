@@ -35,8 +35,8 @@ jobs:
       run: |
         docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:latest
     - name: Deploy to Container Apps
-      run: |
-        az containerapp update \
-          --name rag-container \
-          --resource-group rag-resource-group \
-          --image $ACR_NAME.azurecr.io/$IMAGE_NAME:latest
+    run: |
+      az containerapp update \
+        --name rag-container \
+        --resource-group Rag_new_1 \
+        --image contregistry0511.azurecr.io/rag-bot:latest
