@@ -1,0 +1,42 @@
+name: Build and Deploy RAG
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  ACR_NAME: contregistry0511
+  IMAGE_NAME: rag-bot
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Login to Azure
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Login to ACR
+      run: |
+        az acr login --name $ACR_NAME
+
+    - name: Build Docker image
+      run: |
+        docker build -t $ACR_NAME.azurecr.io/$IMAGE_NAME:latest .
+
+    - name: Push Docker image
+      run: |
+        docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:latest
+    - name: Deploy to Container Apps
+      run: |
+        az containerapp update \
+          --name rag-container \
+          --resource-group rag-resource-group \
+          --image $ACR_NAME.azurecr.io/$IMAGE_NAME:latest
